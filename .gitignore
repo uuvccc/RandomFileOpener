@@ -1,0 +1,45 @@
+# Compiled executables
+*.exe
+*.dll
+*.lib
+*.o
+
+# Object files
+*.obj
+*.o
+*.ko
+*.so
+*.dylib
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE-specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Build directories
+build/
+out/
+
+# Log files
+*.log
+
+# Environment variables
+.env
+
+# Windows specific
+Thumbs.db
+Desktop.ini
+
+# OSX specific
+.DS_Store
+
+# Linux specific
+*~

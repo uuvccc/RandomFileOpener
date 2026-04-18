@@ -1,0 +1,101 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for versioning
+    
+    - name: Set up MinGW
+      uses: egor-tensin/setup-mingw@v2
+      with:
+        version: 13.2.0
+        platform: x64
+    
+    - name: Compile
+      run: |
+        gcc -o RandomFileOpener.exe main.c -mwindows
+      shell: cmd
+    
+    - name: Verify build
+      run: |
+        if (Test-Path RandomFileOpener.exe) {
+          Write-Host "Build successful!"
+        } else {
+          Write-Error "Build failed - executable not found"
+          exit 1
+        }
+      shell: powershell
+    
+    - name: Generate version
+      id: version
+      run: |
+        $version = "1.0.$($env:GITHUB_RUN_NUMBER)"
+        Write-Host "Generated version: $version"
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+      shell: powershell
+    
+    - name: Create release notes
+      id: release-notes
+      run: |
+        $notes = "Automated release v${{ steps.version.outputs.version }}
+        
+        Changes:
+        - Build ${{ github.run_number }}
+        - Commit: ${{ github.sha }}
+        - Author: ${{ github.actor }}"
+        $notes | Out-File -FilePath release-notes.md -Encoding UTF8
+        Write-Host "Release notes created"
+      shell: powershell
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: RandomFileOpener
+        path: RandomFileOpener.exe
+    
+    - name: Create Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Release v${{ steps.version.outputs.version }}
+        body_path: release-notes.md
+        files: RandomFileOpener.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Cleanup
+      run: |
+        if (Test-Path release-notes.md) {
+          Remove-Item release-notes.md
+        }
+      shell: powershell
+
+  notify:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Check build status
+      run: |
+        if [[ "${{ needs.build.result }}" == "success" ]]; then
+          echo "Build and release completed successfully!"
+        else
+          echo "Build or release failed!"
+          exit 1
+        fi
+      shell: bash
